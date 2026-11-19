@@ -57,3 +57,20 @@ def test_invalid_window_is_rejected():
 
 def test_unknown_resource_returns_404():
     assert book(999, "2026-12-01T12:00:00Z", "2026-12-02T12:00:00Z").status_code == 404
+
+
+def test_cancelled_slot_can_be_booked_again():
+    rid = make_resource()
+    first = book(rid, "2026-12-01T12:00:00Z", "2026-12-03T10:00:00Z").json()
+    cancelled = client.post(f"/bookings/{first['id']}/cancel")
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "cancelled"
+    assert book(rid, "2026-12-01T12:00:00Z", "2026-12-03T10:00:00Z", guest="Sara").status_code == 201
+
+
+def test_cancel_is_idempotent_and_404s_for_unknown():
+    rid = make_resource()
+    bid = book(rid, "2026-12-01T12:00:00Z", "2026-12-02T12:00:00Z").json()["id"]
+    assert client.post(f"/bookings/{bid}/cancel").status_code == 200
+    assert client.post(f"/bookings/{bid}/cancel").status_code == 200
+    assert client.post("/bookings/999/cancel").status_code == 404
