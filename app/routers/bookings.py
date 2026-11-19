@@ -38,6 +38,19 @@ def create_booking(body: BookingIn, db: Session = Depends(get_db)):
     return booking
 
 
+@router.post("/{booking_id}/cancel", response_model=BookingOut)
+def cancel_booking(booking_id: int, db: Session = Depends(get_db)):
+    booking = db.get(Booking, booking_id)
+    if not booking:
+        raise HTTPException(404, "Booking not found")
+    if booking.status == "cancelled":
+        # Cancelling twice is harmless, so return the booking instead of an error.
+        return booking
+    booking.status = "cancelled"
+    db.commit()
+    return booking
+
+
 @router.get("", response_model=list[BookingOut])
 def list_bookings(resource_id: int | None = None, db: Session = Depends(get_db)):
     query = select(Booking).order_by(Booking.start)
