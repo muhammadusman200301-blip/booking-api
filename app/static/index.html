@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booking API · Demo</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262b36; --text:#e7eaf0; --muted:#9aa3b2; --accent:#4f7cff; --ok:#2fb67c; --bad:#e5534b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 880px; margin: 0 auto; padding: 40px 20px 60px; }
+  h1 { margin:0 0 6px; font-size: 28px; }
+  p.sub { margin:0 0 24px; color:var(--muted); }
+  .links a { color:var(--accent); text-decoration:none; margin-right:16px; font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-top:20px; }
+  h2 { font-size:16px; margin:0 0 14px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:end; }
+  label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  input, select { width:100%; padding:10px; border-radius:8px; border:1px solid var(--line); background:#0f1218; color:var(--text); font-size:14px; }
+  button { padding:10px 14px; border-radius:8px; border:0; background:var(--accent); color:white; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--text); padding:6px 10px; font-weight:500; }
+  #msg { margin-top:12px; font-size:14px; min-height:20px; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  .pill { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); }
+  .pill.confirmed { color:var(--ok); border-color:#1f5d43; } .pill.cancelled { color:var(--muted); }
+  .hint { color:var(--muted); font-size:13px; margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Booking API</h1>
+  <p class="sub">Book an apartment for a time range. Overlapping bookings for the same apartment are rejected; back-to-back bookings are allowed.</p>
+  <div class="links">
+    <a href="/docs">API docs (Swagger)</a>
+    <a href="https://github.com/muhammadusman200301-blip/booking-api">Source on GitHub</a>
+    <a href="/health">Health check</a>
+  </div>
+
+  <section class="card">
+    <h2>New booking</h2>
+    <div class="grid">
+      <div><label for="resource">Apartment</label><select id="resource"></select></div>
+      <div><label for="guest">Guest name</label><input id="guest" placeholder="e.g. Sara" maxlength="120"></div>
+      <div><label for="start">Check-in</label><input id="start" type="datetime-local"></div>
+      <div><label for="end">Check-out</label><input id="end" type="datetime-local"></div>
+      <div><button id="book">Book</button></div>
+    </div>
+    <div id="msg"></div>
+    <div class="hint">Try booking the same dates twice to see the double-booking check return 409.</div>
+  </section>
+
+  <section class="card">
+    <h2>Bookings for this apartment</h2>
+    <table>
+      <thead><tr><th>#</th><th>Guest</th><th>Check-in</th><th>Check-out</th><th>Status</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="6" class="hint">Loading…</td></tr></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (iso) => new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+function say(text, ok) { $("msg").textContent = text; $("msg").className = ok ? "ok" : "bad"; }
+
+async function api(path, options = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = Array.isArray(body.detail) ? body.detail.map((d) => d.msg).join(", ") : body.detail;
+    throw new Error(detail || `Request failed (${res.status})`);
+  }
+  return body;
+}
+
+async function loadResources() {
+  const list = await api("/resources");
+  $("resource").innerHTML = list.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join("");
+}
+
+async function loadBookings() {
+  const rid = $("resource").value;
+  if (!rid) return;
+  const list = await api(`/bookings?resource_id=${rid}`);
+  $("rows").innerHTML = list.length
+    ? list.map((b) => `<tr>
+        <td>${b.id}</td><td>${esc(b.guest_name)}</td><td>${fmt(b.start)}</td><td>${fmt(b.end)}</td>
+        <td><span class="pill ${b.status}">${b.status}</span></td>
+        <td>${b.status === "confirmed" ? `<button class="ghost" data-cancel="${b.id}">Cancel</button>` : ""}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="6" class="hint">No bookings yet.</td></tr>`;
+}
+
+$("book").addEventListener("click", async () => {
+  const start = $("start").value, end = $("end").value;
+  if (!start || !end || !$("guest").value.trim()) return say("Please fill in guest name, check-in and check-out.", false);
+  try {
+    const b = await api("/bookings", {
+      method: "POST",
+      body: JSON.stringify({
+        resource_id: Number($("resource").value),
+        guest_name: $("guest").value.trim(),
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+      }),
+    });
+    say(`Booked: #${b.id} for ${b.guest_name}.`, true);
+    loadBookings();
+  } catch (e) { say(e.message, false); }
+});
+
+$("rows").addEventListener("click", async (ev) => {
+  const id = ev.target.dataset.cancel;
+  if (!id) return;
+  try { await api(`/bookings/${id}/cancel`, { method: "POST" }); say(`Booking #${id} cancelled, the slot is free again.`, true); loadBookings(); }
+  catch (e) { say(e.message, false); }
+});
+
+$("resource").addEventListener("change", loadBookings);
+
+(function setDefaults() {
+  const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(14, 0, 0, 0);
+  const e = new Date(d); e.setDate(e.getDate() + 2); e.setHours(11);
+  const local = (x) => new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  $("start").value = local(d); $("end").value = local(e);
+})();
+
+loadResources().then(loadBookings).catch((e) => say(e.message, false));
+</script>
+</body>
+</html>
