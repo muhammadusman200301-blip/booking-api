@@ -6,6 +6,7 @@ A FastAPI + PostgreSQL service for booking rooms, apartments or time slots. The 
 
 - Create bookable **resources** (a room, an apartment, a cleaner's time slot)
 - Create, list and fetch **bookings**
+- **Cancel** a booking and free the slot (cancelling twice is safe)
 - **Blocks double bookings** for the same resource
 - Allows **back-to-back** bookings (check-out at 10:00, next check-in at 10:00)
 - Rejects bad input: end before start, times without a timezone, unknown resource
@@ -43,7 +44,7 @@ pytest
 
 ## Roadmap
 
-- [ ] Cancel a booking and free the slot
+- [x] Cancel a booking and free the slot
 - [ ] Stripe test-mode payments and a payment webhook with idempotency keys
 - [ ] Database-level protection against race conditions (Postgres exclusion constraint)
 - [ ] Alembic migrations
