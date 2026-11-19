@@ -1,5 +1,9 @@
 # Booking API
 
+[![CI](https://github.com/muhammadusman200301-blip/booking-api/actions/workflows/ci.yml/badge.svg)](https://github.com/muhammadusman200301-blip/booking-api/actions/workflows/ci.yml)
+
+**Live demo:** _coming soon_ · API docs at `/docs`
+
 A FastAPI + PostgreSQL service for booking rooms, apartments or time slots. The first version focuses on the part that usually goes wrong in booking systems: **two guests getting the same slot**.
 
 ## What it does today
@@ -10,6 +14,8 @@ A FastAPI + PostgreSQL service for booking rooms, apartments or time slots. The 
 - **Blocks double bookings** for the same resource
 - Allows **back-to-back** bookings (check-out at 10:00, next check-in at 10:00)
 - Rejects bad input: end before start, times without a timezone, unknown resource
+- Locks the resource row while checking (`SELECT ... FOR UPDATE`), so two simultaneous requests can't both win the same slot
+- A small booking page at `/` and interactive API docs at `/docs`
 
 ## How the double-booking check works
 
@@ -34,6 +40,13 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+## Deploy to Vercel
+
+The repo deploys as-is: `api/index.py` exposes the FastAPI app and `vercel.json` routes every path to it.
+
+- With no database configured, the demo uses SQLite in `/tmp` (data resets when the function restarts).
+- For persistent data, add a Postgres database (e.g. Neon from the Vercel Marketplace). Its `DATABASE_URL` / `POSTGRES_URL` is picked up automatically.
+
 ## Tests
 
 ```bash
@@ -46,10 +59,12 @@ pytest
 
 - [x] Cancel a booking and free the slot
 - [ ] Stripe test-mode payments and a payment webhook with idempotency keys
-- [ ] Database-level protection against race conditions (Postgres exclusion constraint)
+- [x] Protection against concurrent double bookings (row lock on the resource)
+- [ ] Postgres exclusion constraint as a second safety net
 - [ ] Alembic migrations
-- [ ] GitHub Actions CI
-- [ ] Simple booking web page and live deployment
+- [x] GitHub Actions CI
+- [x] Simple booking web page
+- [x] Deployable to Vercel (serverless Python)
 
 ## Stack
 
