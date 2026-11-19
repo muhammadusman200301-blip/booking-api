@@ -17,7 +17,10 @@ def create_booking(body: BookingIn, db: Session = Depends(get_db)):
     except BookingError as e:
         raise HTTPException(422, str(e))
 
-    if not db.get(Resource, body.resource_id):
+    # Lock the resource row (SELECT ... FOR UPDATE on Postgres) so two requests for
+    # the same resource are checked one after the other, not at the same time.
+    resource = db.scalar(select(Resource).where(Resource.id == body.resource_id).with_for_update())
+    if not resource:
         raise HTTPException(404, "Resource not found")
 
     # Same rule as availability.overlaps(), pushed into SQL so we only load clashes.
