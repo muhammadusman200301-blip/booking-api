@@ -74,3 +74,7 @@ def test_cancel_is_idempotent_and_404s_for_unknown():
     assert client.post(f"/bookings/{bid}/cancel").status_code == 200
     assert client.post(f"/bookings/{bid}/cancel").status_code == 200
     assert client.post("/bookings/999/cancel").status_code == 404
+
+def test_home_page_and_health():
+    assert "Booking" in client.get("/").text
+    assert client.get("/health").json() == {"status": "ok"}
