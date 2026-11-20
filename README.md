@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/muhammadusman200301-blip/booking-api/actions/workflows/ci.yml/badge.svg)](https://github.com/muhammadusman200301-blip/booking-api/actions/workflows/ci.yml)
 
-**Live demo:** _coming soon_ · API docs at `/docs`
+**Live demo:** https://booking-api-usman.vercel.app · API docs: https://booking-api-usman.vercel.app/docs
 
 A FastAPI + PostgreSQL service for booking rooms, apartments or time slots. The first version focuses on the part that usually goes wrong in booking systems: **two guests getting the same slot**.
 
@@ -42,7 +42,7 @@ uvicorn app.main:app --reload
 
 ## Deploy to Vercel
 
-The repo deploys as-is: `api/index.py` exposes the FastAPI app and `vercel.json` routes every path to it.
+The repo deploys as-is with Vercel's zero-config FastAPI support: `index.py` at the root exposes the app.
 
 - With no database configured, the demo uses SQLite in `/tmp` (data resets when the function restarts).
 - For persistent data, add a Postgres database (e.g. Neon from the Vercel Marketplace). Its `DATABASE_URL` / `POSTGRES_URL` is picked up automatically.
